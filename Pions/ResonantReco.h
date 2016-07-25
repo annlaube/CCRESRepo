@@ -22,6 +22,7 @@
 #include "DataFormat/mctrack.h"
 #include "DataFormat/mcshower.h"
 #include "LArUtil/Geometry.h"
+#include "count.h"
 #include <TH1.h>
 
 namespace larlite {
@@ -54,7 +55,11 @@ namespace larlite {
     */
     virtual bool finalize();
 
-      int all_events = 0;
+      int all_events      = 0;
+      int CCRES_pion_all  = 0;
+      int CCRES_1pion     = 0;
+
+
 
   protected:
     

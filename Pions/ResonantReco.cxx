@@ -9,31 +9,56 @@ namespace larlite {
 
     // Do all variable initialization you wish to do here.
   
-    all_events = 0;
+    all_events              = 0;
+    CCRES_pion_all          = 0;
+    CCRES_1pion             = 0;
 
     return true;
   }
-  
-  bool ResonantReco::analyze(storage_manager* storage) {
-  
-    all_events++;
+ 
+// ---------------------------------------------------------------------------------------------
     
-    // Do your event-by-event analysis here. This function is called for 
-    // each event in the loop. You have "storage" pointer which contains 
-    // event-wise data. To see what is available, check the "Manual.pdf":
-    // http://microboone-docdb.fnal.gov:8080/cgi-bin/ShowDocument?docid=3183
-    // 
-    // event_fifo* my_pmtfifo_v = (event_fifo*)(storage->get_data(DATA::PMFIFO));
-    // if( event_fifo )
-    //   std::cout << "Event ID: " << my_pmtfifo_v->event_id() << std::endl;
+  bool ResonantReco::analyze(storage_manager* storage) {
+      
+      auto mc = storage->get_data<event_mctruth>("generator");
+      auto mctrk_v = storage->get_data<larlite::event_mctrack>("mcreco");
+      auto& nu = mc->at(0).GetNeutrino();
+      auto& mcparticles = mc->at(0).GetParticles();
   
+      all_events++;
+      
+      int npions = 0;
+      bool contains_pion = false;
+      bool contains_one_pion = false;
+      
+      for(auto par : mcparticles) {
+          if(par.PdgCode() == 211 && nu.InteractionType() == 1003) {
+              contains_pion = true;
+              CCRES_pion_all++;
+              npions++;
+          }
+      }
+      
+      if(npions == 1) {
+          contains_one_pion = true;
+          CCRES_1pion++;
+      }
+      
+      
+      
+    
+      
     return true;
   }
 
+// ---------------------------------------------------------------------------------------------
+    
   bool ResonantReco::finalize() {
 
-    std::cout << "All events : \t " << all_events << std::endl;
-
+    std::cout << "All events : \t\t " << all_events << std::endl;
+    std::cout << "CCRES_pion_all : \t " << CCRES_pion_all << std::endl;
+    std::cout << "CCRES_1pion : \t\t " << CCRES_1pion << std::endl;
+      
     // Do all variable finalization you wish to do here.
     // If you need, you can store your ROOT class instance in the output
     // if(_fout) { _fout->cd(); h1->Write(); }
