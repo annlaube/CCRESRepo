@@ -21,6 +21,9 @@
 #include "DataFormat/mctrack.h"
 #include "DataFormat/mcshower.h"
 #include "LArUtil/Geometry.h"
+#include "DataFormat/event_ass.h"
+#include "DataFormat/track.h"
+#include "DataFormat/vertex.h"
 #include "DataFormat/pfpart.h"
 #include <TH1.h>
 #include <THStack.h>

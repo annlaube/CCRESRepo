@@ -11,7 +11,6 @@ namespace larlite {
     mcpart = 0;
     PionMom = 0;
     PionE = 0;
-    PionP;
     PionTrackID = -99999;
     return true;
   }
@@ -22,16 +21,18 @@ namespace larlite {
 
     auto mc = storage->get_data<event_mctruth>("generator");
     auto mctrk_v = storage->get_data<larlite::event_mctrack>("mcreco");  	// this is a vector of MCtracks
-    auto mcshow_v = storage->get_data<event_mcshower>("mcreco");      		// this is a vector of MCshowers
     auto mcparticles = mc->at(0).GetParticles(); 
+
+    //Reconstruction access
+    
+    //get handle to the association
+
     auto pfp_v = storage->get_data<event_pfpart>("pandoraCosmic");			// PandoraPFParticles
 
-    event_vertex* ev_vertex = nullptr;
-    auto const& ass_vertex = storage->find_one_ass(pfp_v->id(), ev_vertex, "pandoraCosmic");
-
     event_track* ev_track = nullptr;
-    auto const& ass_tracks = storage->find_one_ass(pfp_v->id(), ev_track, "pandoraCosmicKHit");	// vector of track indices associated with the pfparticle...
-  
+    auto const& ass_tracks = storage->find_one_ass(pfp_v->id(), ev_track, pfp_v->id().second);	// vector of track indices associated with the pfparticle...
+    
+    
     // interaction mode 
     bool decayPion = false;
     bool piInelasticPion = false;
@@ -107,21 +108,11 @@ namespace larlite {
     }
 
 
-    // get the tracks associated with PFParticles  
-
-    for(auto pfpart : *pfp_v) {
-      // std::cout << "Pandora Particle " << pfpart.PdgCode() << std::endl;
-    }
-  
-    for(size_t pfp_i = 0; pfp_i < ass_vertex.size(); ++pfp_i) { 
-      auto const& pfpp = (*pfp_v)[pfp_i];
-     // std::cout << "  PFParticle @ index = " << pfp_i << " ... ID = " << pfpp.Self() << " ... pdgCode " << pfpp.PdgCode() << " ... # daughters " << pfpp.NumDaughters() << std::endl; 
-    }
 
     // print information desired
 
     //decide which events
-    if(!exitPion && decayPion && !piInelasticPion) {
+    if(exitPion && !decayPion && !piInelasticPion) {
       // Event info
       std::cout << "\n----------------------------------------" << std::endl;
       std::cout << "Run   " << storage->run_id() << "  Event " << storage->event_id() << std::endl << std::endl;
@@ -143,21 +134,31 @@ namespace larlite {
         }
       }
 
-      if(decayPion) 	std::cout << "\t---------------->DECAY \t Process : " << pionProcess		<< std::endl;
-      if(piInelasticPion) std::cout << "\t ---------------->Pi+INELASTIC \t Process : "	<< pionProcess 	<<  std::endl;
-      if(exitPion) 	std::cout << "\t ---------------->Pion EXITS TPC \t Process : " << pionProcess 	<< std::endl;
-      if(!decayPion && !piInelasticPion && !exitPion) std::cout << "\t ----------------> Process : " 	<< pionProcess << std::endl;
+      if(decayPion) 	std::cout << "\t-->DECAY \t Process : " << pionProcess		<< std::endl;
+      if(piInelasticPion) std::cout << "\t -->Pi+INELASTIC \t Process : "	<< pionProcess 	<<  std::endl;
+      if(exitPion) 	std::cout << "\t -->Pion EXITS TPC \t Process : " << pionProcess 	<< std::endl;
+      if(!decayPion && !piInelasticPion && !exitPion) std::cout << "\t -->Unclassified \t Process : " 	<< pionProcess << std::endl;
     
 
     // Reconstruction info
     std::cout << "\n Reconstruction Info " << std::endl;
 
     for(auto pfpart : *pfp_v) {
-     // std::cout << "Pandora Particle " << pfpart.PdgCode() << std::endl;
+    //  std::cout << "Pandora Particle " << pfpart.PdgCode() << std::endl;
       }
-    for(size_t pfp_i = 0; pfp_i < ass_vertex.size(); ++pfp_i) {
-      auto const& pfpp = (*pfp_v)[pfp_i];
-      std::cout << "  PFParticle @ index = " << pfp_i << " ... ID = " << pfpp.Self() << " ... pdgCode " << pfpp.PdgCode() << " ... is primary? " << pfpp.IsPrimary() << " ... # daughters " << pfpp.NumDaughters() << std::endl; 
+    std::cout << "pfp_v->size() : " << pfp_v->size() << std::endl;
+    std::cout << "ass_tracks.size() " << ass_tracks.size() << std::endl;
+    if(ass_tracks.size() != 0) {
+      for(size_t pfp_i = 0; pfp_i < ass_tracks.size(); ++pfp_i) {
+        auto const& pfpp = (*pfp_v)[pfp_i];
+	auto const& track = (*ev_track)[pfp_i];
+        std::cout << "  PFParticle @ index = " << pfp_i << " ... ID = " << pfpp.Self() << " ... pdgCode " << pfpp.PdgCode() << " ... is primary? " << pfpp.IsPrimary() << " ... # daughters " << pfpp.NumDaughters() << " ... Track Length [" << track.Length()<< "] " << std::endl;
+	std::cout << " \t \t\t \t Start: [" <<  track.Vertex().X() << ", " << track.Vertex().Y() << ", " << track.Vertex().Z() << "] \t End: [ " << track.End().X()<< ", " << track.End().Y() << ", " << track.End().Z() << "] " << std::endl;
+      }
+    }
+    
+    if(!ev_track or (ev_track->size() == 0)) {
+      std::cout << "No track associated with PFPart! " << std::endl;
     }
   }
 
