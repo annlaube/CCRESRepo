@@ -35,7 +35,12 @@ namespace larlite {
   // interaction mode 
   bool decayPion = false;
   bool piInelasticPion = false;
+  bool exitPion = false;
 
+
+  //other variables
+  int countDaughters = 0;
+  double borderdist [6];
 
   std::cout << "\n----------------------------------------" << std::endl;
   std::cout << "Run   " << storage->run_id() << "  Event " << storage->event_id() << std::endl << std::endl; 
@@ -52,23 +57,23 @@ namespace larlite {
     }
   } 
 
-if(mctrk_v->size() != 0) {
+  if(mctrk_v->size() != 0) {
   
-  for(auto mctrk : *mctrk_v)  {
+    for(auto mctrk : *mctrk_v)  {
    
-    if(mctrk.PdgCode() < 10000) { 
-      std::cout << "mctrack " << mctrk.PdgCode() << "\t ID : " << mctrk.TrackID() <<  "\t Process : " << mctrk.Process() << " \t Mother ID : " << mctrk.MotherTrackID() <<  " \t Track length : " << length(mctrk)<< std::endl;
-      if(mctrk.size() !=0) {
-        std::cout << " \t \t\t \t Start: [" << mctrk.front().X() << ", " << mctrk.front().Y() << ", " << mctrk.front().Z() << "] \t End: [" << mctrk.back().X() << ", " << mctrk.back().Y() << ", " << mctrk.back().Z() << "] " << std::endl;
-      }   
-    }
+      if(mctrk.PdgCode() < 10000) { 
+        std::cout << "mctrack " << mctrk.PdgCode() << "\t ID : " << mctrk.TrackID() <<  "\t Process : " << mctrk.Process() << " \t Mother ID : " << mctrk.MotherTrackID() <<  " \t Track length : " << length(mctrk)<< std::endl;
+        if(mctrk.size() !=0) {
+          std::cout << " \t \t\t \t Start: [" << mctrk.front().X() << ", " << mctrk.front().Y() << ", " << mctrk.front().Z() << "] \t End: [" << mctrk.back().X() << ", " << mctrk.back().Y() << ", " << mctrk.back().Z() << "] " << std::endl;
+        }     
+      }
 
-    if(mctrk.Process() == "primary" && mctrk.PdgCode() == 211) {
-      PionLength->Fill(length(mctrk));
-      PionTrackID = mctrk.TrackID();
+      if(mctrk.Process() == "primary" && mctrk.PdgCode() == 211) {
+        PionLength->Fill(length(mctrk));
+        PionTrackID = mctrk.TrackID();
+      }
     }
   }
-}
   
   for(auto mctrk : *mctrk_v) {
     if(mctrk.Process() == "Decay" && mctrk.MotherTrackID() == PionTrackID ) {
@@ -78,22 +83,52 @@ if(mctrk_v->size() != 0) {
     if(mctrk.Process() == "pi+Inelastic" && mctrk.MotherTrackID() == PionTrackID ) {
       std::cout << "\t ----------------> Pi+ Inelastic Scattering " << std::endl;
       piInelasticPion = true;
-    }
-    
+    }    
   }
 
-if(!decayPion && !piInelasticPion) {
-  std::cout << "\n \t-----------------> neither Decay nor pi+inelastic " << std::endl;
-}      
+  for(auto mctrk : *mctrk_v) {
+    if(mctrk_v->size() != 0 && mctrk.MotherTrackID() == PionTrackID) countDaughters++;
+  } 
 
-if(decayPion) {
-  DecayPionEnergy->Fill(PionE);
-  DecayPionMom->Fill(PionMom);
-}
-if(piInelasticPion) {
-  PiInelasticPionEnergy->Fill(PionE);
-  PiInelasticPionMom->Fill(PionMom);
-}
+  if(mctrk_v->size() != 0 && mctrk_v->at(0).PdgCode() == 211 && mctrk_v->at(0).size() != 0) {
+    std::cout << "End point : " << mctrk_v->at(0).back().X() << ", " << mctrk_v->at(0).back().Y() << ", " << mctrk_v->at(0).back().Z() << std::endl;
+    EndPoint->Fill(mctrk_v->at(0).back().X(), mctrk_v->at(0).back().Y(), mctrk_v->at(0).back().Z());
+    borderdist[0] = fabs(mctrk_v->at(0).back().X());
+    //borderdist[0] = minX1;
+    borderdist[1] = fabs(mctrk_v->at(0).back().X() - 2.*(larutil::Geometry::GetME()->DetHalfWidth()));
+    //borderdist[1] = minX2;
+    borderdist[2] = fabs(mctrk_v->at(0).back().Y() - larutil::Geometry::GetME()->DetHalfHeight());
+    //borderdist[2] = minY1;
+    borderdist[3] = fabs(mctrk_v->at(0).back().Y() + larutil::Geometry::GetME()->DetHalfHeight());
+    //borderdist[3] = minY2;
+    borderdist[4] = fabs(mctrk_v->at(0).back().Z());
+    //borderdist[4] = minZ1;
+    borderdist[5] = fabs(mctrk_v->at(0).back().Z() - larutil::Geometry::GetME()->DetLength());
+    //borderdist[5] = minZ2;
+    std::cout << "************** " << borderdist[0] << ", " <<borderdist[1] << ", " <<borderdist[2] << ", " <<borderdist[3] << ", " <<borderdist[4] << ", " <<borderdist[5]  << std::endl;
+    std::cout << "************* MIN " << minimumValue(borderdist) << std::endl;
+    if(minimumValue(borderdist) < 10. && countDaughters == 1) exitPion = true;
+  }
+
+  if(exitPion) {
+    std::cout << "\n \t-----------------> neither Decay nor pi+inelastic, exits TPC " << std::endl;
+    MinEndPointDist->Fill(minimumValue(borderdist));
+    ExitPionMom->Fill(PionMom);
+    ExitPionEnergy->Fill(PionE);
+  }
+
+  if(!decayPion && !piInelasticPion && !exitPion){
+    std::cout << "!!!***!!! non decay, non inelasitc, non-exit " <<std::endl;
+  }      
+
+  if(decayPion) {
+    DecayPionEnergy->Fill(PionE);
+    DecayPionMom->Fill(PionMom);
+  }
+  if(piInelasticPion) {
+    PiInelasticPionEnergy->Fill(PionE);
+    PiInelasticPionMom->Fill(PionMom);
+  }
 
   // get the tracks associated with PFParticles  
 
@@ -107,20 +142,23 @@ if(piInelasticPion) {
   }
 
   return true;
-  }
+} 
 //----------------------------------------------------
   bool SinglePions::finalize() {
 
     // write trees, histograms etc
 
-DecayPionMom->SetFillColor(kRed);
-PiInelasticPionMom->SetFillColor(kGreen);
+  DecayPionMom->SetFillColor(kRed);
+  PiInelasticPionMom->SetFillColor(kGreen);
+  ExitPionMom->SetFillColor(kBlue);
 
-InteractionEnergy->Add(DecayPionEnergy);
-InteractionEnergy->Add(PiInelasticPionEnergy);
+  InteractionEnergy->Add(ExitPionEnergy);
+  InteractionEnergy->Add(DecayPionEnergy);
+  InteractionEnergy->Add(PiInelasticPionEnergy);
 
-InteractionMom->Add(DecayPionMom);
-InteractionMom->Add(PiInelasticPionMom);
+  InteractionMom->Add(ExitPionMom);
+  InteractionMom->Add(DecayPionMom);
+  InteractionMom->Add(PiInelasticPionMom);
 
     if(_fout) { _fout->cd();
         PionLength->Write();
@@ -130,8 +168,12 @@ InteractionMom->Add(PiInelasticPionMom);
         DecayPionMom->Write();
         PiInelasticPionEnergy->Write();
         PiInelasticPionMom->Write();
+        ExitPionEnergy->Write();
+	ExitPionMom->Write();
 	InteractionEnergy->Write();
 	InteractionMom->Write();  
+	EndPoint->Write();
+	MinEndPointDist->Write();
   }
     std::cout << "\n******* Number of MCPART " << mcpart << std::endl;
     return true;
